@@ -38,37 +38,41 @@ function selectionToClipPath(selObj: fabric.FabricObject, vpt: number[]): Path2D
     const objTop = selObj.top ?? 0
     const scaleX = selObj.scaleX ?? 1
     const scaleY = selObj.scaleY ?? 1
+    // Fabric renders path points relative to the object center, not the left/top edge.
+    // Object center = left + width*scaleX/2, so we need the half-size correction.
+    const halfW = (selObj.width ?? 0) / 2
+    const halfH = (selObj.height ?? 0) / 2
 
     for (const cmd of pathData) {
       const type = cmd[0] as string
       switch (type) {
         case 'M': {
-          const sx = ((cmd[1] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
-          const sy = ((cmd[2] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+          const sx = ((cmd[1] - offsetX + halfW) * scaleX + objLeft) * vpt[0] + vpt[4]
+          const sy = ((cmd[2] - offsetY + halfH) * scaleY + objTop) * vpt[3] + vpt[5]
           path.moveTo(sx, sy)
           break
         }
         case 'L': {
-          const sx = ((cmd[1] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
-          const sy = ((cmd[2] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+          const sx = ((cmd[1] - offsetX + halfW) * scaleX + objLeft) * vpt[0] + vpt[4]
+          const sy = ((cmd[2] - offsetY + halfH) * scaleY + objTop) * vpt[3] + vpt[5]
           path.lineTo(sx, sy)
           break
         }
         case 'C': {
-          const sx1 = ((cmd[1] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
-          const sy1 = ((cmd[2] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
-          const sx2 = ((cmd[3] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
-          const sy2 = ((cmd[4] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
-          const sx = ((cmd[5] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
-          const sy = ((cmd[6] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+          const sx1 = ((cmd[1] - offsetX + halfW) * scaleX + objLeft) * vpt[0] + vpt[4]
+          const sy1 = ((cmd[2] - offsetY + halfH) * scaleY + objTop) * vpt[3] + vpt[5]
+          const sx2 = ((cmd[3] - offsetX + halfW) * scaleX + objLeft) * vpt[0] + vpt[4]
+          const sy2 = ((cmd[4] - offsetY + halfH) * scaleY + objTop) * vpt[3] + vpt[5]
+          const sx = ((cmd[5] - offsetX + halfW) * scaleX + objLeft) * vpt[0] + vpt[4]
+          const sy = ((cmd[6] - offsetY + halfH) * scaleY + objTop) * vpt[3] + vpt[5]
           path.bezierCurveTo(sx1, sy1, sx2, sy2, sx, sy)
           break
         }
         case 'Q': {
-          const sx1 = ((cmd[1] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
-          const sy1 = ((cmd[2] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
-          const sx = ((cmd[3] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
-          const sy = ((cmd[4] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+          const sx1 = ((cmd[1] - offsetX + halfW) * scaleX + objLeft) * vpt[0] + vpt[4]
+          const sy1 = ((cmd[2] - offsetY + halfH) * scaleY + objTop) * vpt[3] + vpt[5]
+          const sx = ((cmd[3] - offsetX + halfW) * scaleX + objLeft) * vpt[0] + vpt[4]
+          const sy = ((cmd[4] - offsetY + halfH) * scaleY + objTop) * vpt[3] + vpt[5]
           path.quadraticCurveTo(sx1, sy1, sx, sy)
           break
         }
@@ -106,10 +110,11 @@ function getSelectionScreenBounds(selObj: fabric.FabricObject, vpt: number[], ca
 }
 
 /**
- * Delete (fill with background color) inside the selection area.
- * The selection overlay is preserved after deletion (PS behavior).
+ * Internal helper: fill a clipped region on the canvas with a given color.
+ * Creates a selection-shaped fill on a transparent off-screen canvas so that
+ * only the pixels inside the selection shape are opaque (no rectangular artifact).
  */
-export function deleteInSelection(canvas: fabric.Canvas, bgColor: string) {
+function _fillRegion(canvas: fabric.Canvas, color: string, undoLabel: string) {
   const selObj = canvas.getObjects().find((o: any) => o.name === '__selection')
   if (!selObj) return
 
@@ -123,34 +128,21 @@ export function deleteInSelection(canvas: fabric.Canvas, bgColor: string) {
   const regionH = bounds.bottom - bounds.top
   if (regionW < 1 || regionH < 1) return
 
-  // Temporarily remove selection overlay to read clean pixels
-  canvas.remove(selObj)
-  canvas.renderAll()
+  // Create off-screen canvas with transparent background.
+  // Fill only inside the clip path so non-selection area stays transparent.
+  const offscreen = document.createElement('canvas')
+  offscreen.width = regionW
+  offscreen.height = regionH
+  const offCtx = offscreen.getContext('2d')!
 
-  const ctx = canvas.getContext()
+  offCtx.save()
+  offCtx.translate(-bounds.left, -bounds.top)
+  offCtx.clip(clipPath)
+  offCtx.fillStyle = color
+  offCtx.fillRect(bounds.left, bounds.top, regionW, regionH)
+  offCtx.restore()
 
-  // Fill the clipped region with background color
-  ctx.save()
-  ctx.clip(clipPath)
-  ctx.fillStyle = bgColor
-  ctx.fillRect(bounds.left, bounds.top, regionW, regionH)
-  ctx.restore()
-
-  // Read the modified region for undo support
-  const regionData = ctx.getImageData(bounds.left, bounds.top, regionW, regionH)
-
-  // Re-add selection overlay (PS behavior: selection preserved after delete)
-  canvas.add(selObj)
-  canvas.renderAll()
-
-  // Create FabricImage for undo support
-  const resultCanvas = document.createElement('canvas')
-  resultCanvas.width = regionW
-  resultCanvas.height = regionH
-  const resultCtx = resultCanvas.getContext('2d')!
-  resultCtx.putImageData(regionData, 0, 0)
-
-  const dataUrl = resultCanvas.toDataURL('image/png')
+  const dataUrl = offscreen.toDataURL('image/png')
   const imgEl = new Image()
   imgEl.onload = () => {
     const fImg = new fabric.FabricImage(imgEl, {
@@ -158,16 +150,92 @@ export function deleteInSelection(canvas: fabric.Canvas, bgColor: string) {
       top: (bounds.top - vpt[5]) / vpt[3],
       scaleX: 1 / vpt[0],
       scaleY: 1 / vpt[3],
-      selectable: true,
-      evented: true,
-      name: '选区删除',
+      selectable: false,
+      evented: false,
+      name: undoLabel,
     })
     canvas.add(fImg)
     canvas.renderAll()
 
     eventBus.emit('tool:object-created', {
       object: fImg,
-      name: '选区删除',
+      name: undoLabel,
+    })
+  }
+  imgEl.src = dataUrl
+}
+
+/**
+ * Delete (fill with background color) inside the selection area.
+ * The selection overlay is preserved after deletion (PS behavior).
+ */
+export function deleteInSelection(canvas: fabric.Canvas, bgColor: string) {
+  _fillRegion(canvas, bgColor, '选区删除')
+}
+
+/**
+ * Fill inside the selection area with a specified color.
+ */
+export function fillInSelection(canvas: fabric.Canvas, fillColor: string) {
+  _fillRegion(canvas, fillColor, '选区填充')
+}
+
+/**
+ * Stroke (outline) the selection with a specified color and width.
+ * Creates the stroke on a transparent off-screen canvas so only the stroke
+ * pixels are opaque (no rectangular artifact).
+ */
+export function strokeSelection(canvas: fabric.Canvas, strokeColor: string, strokeWidth: number = 2) {
+  const selObj = canvas.getObjects().find((o: any) => o.name === '__selection')
+  if (!selObj) return
+
+  const vpt = canvas.viewportTransform!
+  const canvasW = canvas.getWidth()
+  const canvasH = canvas.getHeight()
+
+  const clipPath = selectionToClipPath(selObj, vpt)
+  const bounds = getSelectionScreenBounds(selObj, vpt, canvasW, canvasH)
+  // Expand bounds to account for stroke width
+  const expand = Math.ceil(strokeWidth / 2) + 1
+  const left = Math.max(0, bounds.left - expand)
+  const top = Math.max(0, bounds.top - expand)
+  const right = Math.min(canvasW, bounds.right + expand)
+  const bottom = Math.min(canvasH, bounds.bottom + expand)
+  const regionW = right - left
+  const regionH = bottom - top
+  if (regionW < 1 || regionH < 1) return
+
+  // Create off-screen canvas with transparent background
+  const offscreen = document.createElement('canvas')
+  offscreen.width = regionW
+  offscreen.height = regionH
+  const offCtx = offscreen.getContext('2d')!
+
+  offCtx.save()
+  offCtx.translate(-left, -top)
+  offCtx.lineWidth = strokeWidth
+  offCtx.strokeStyle = strokeColor
+  offCtx.stroke(clipPath)
+  offCtx.restore()
+
+  const dataUrl = offscreen.toDataURL('image/png')
+  const imgEl = new Image()
+  imgEl.onload = () => {
+    const fImg = new fabric.FabricImage(imgEl, {
+      left: (left - vpt[4]) / vpt[0],
+      top: (top - vpt[5]) / vpt[3],
+      scaleX: 1 / vpt[0],
+      scaleY: 1 / vpt[3],
+      selectable: false,
+      evented: false,
+      name: '选区描边',
+    })
+    canvas.add(fImg)
+    canvas.renderAll()
+
+    eventBus.emit('tool:object-created', {
+      object: fImg,
+      name: '选区描边',
     })
   }
   imgEl.src = dataUrl

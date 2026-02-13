@@ -84,3 +84,19 @@ export interface DodgeBurnToolOptions {
   size: number
   exposure: number
 }
+
+export interface PaintBucketToolOptions {
+  tolerance: number
+  opacity: number
+}
+
+export interface RulerMeasurement {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  width: number
+  height: number
+  distance: number
+  angle: number
+}

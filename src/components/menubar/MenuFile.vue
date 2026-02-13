@@ -18,9 +18,12 @@
 <script setup lang="ts">
 import { FILE_MENU } from '@/constants/menu'
 import { useEditorStore } from '@/stores/useEditorStore'
+import { useCanvasStore } from '@/stores/useCanvasStore'
+import { ElMessage } from 'element-plus'
 import eventBus from '@/core/canvas/CanvasEventBus'
 
 const editorStore = useEditorStore()
+const canvasStore = useCanvasStore()
 
 function handleCommand(action: string) {
   switch (action) {
@@ -30,8 +33,17 @@ function handleCommand(action: string) {
     case 'open':
       openFile()
       break
+    case 'save':
+      saveProject()
+      break
+    case 'save-as':
+      saveProjectAs()
+      break
     case 'export':
       eventBus.emit('dialog:export')
+      break
+    case 'close':
+      closeProject()
       break
   }
 }
@@ -53,43 +65,51 @@ function openFile() {
   }
   input.click()
 }
-</script>
 
-<style scoped lang="scss">
-.menu-trigger {
-  padding: 4px 10px;
-  cursor: pointer;
-  font-size: $font-size-sm;
-  color: $text-primary;
-  border-radius: 2px;
-
-  &:hover {
-    background: $bg-light;
+function saveProject() {
+  const canvas = canvasStore.canvasInstance
+  if (!canvas) {
+    ElMessage.warning('没有画布可保存')
+    return
+  }
+  // Export canvas as JSON and save to localStorage
+  const json = canvas.toJSON()
+  const projectData = {
+    canvas: json,
+    width: editorStore.canvasWidth,
+    height: editorStore.canvasHeight,
+    timestamp: Date.now(),
+  }
+  try {
+    localStorage.setItem('__ps_project', JSON.stringify(projectData))
+    editorStore.markClean()
+    ElMessage.success('项目已保存')
+  } catch {
+    ElMessage.error('保存失败，数据过大')
   }
 }
 
-.menu-item-label {
-  flex: 1;
+function saveProjectAs() {
+  const canvas = canvasStore.canvasInstance
+  if (!canvas) return
+  // Export as PNG download
+  const dataUrl = canvas.toDataURL({ format: 'png', multiplier: 1 })
+  const link = document.createElement('a')
+  link.download = `project_${Date.now()}.png`
+  link.href = dataUrl
+  link.click()
+  ElMessage.success('文件已下载')
 }
 
-.menu-item-shortcut {
-  margin-left: 30px;
-  color: $text-muted;
-  font-size: $font-size-xs;
+function closeProject() {
+  const canvas = canvasStore.canvasInstance
+  if (!canvas) return
+  // Clear all objects except background
+  const objects = canvas.getObjects().filter((o: any) => o.name !== '__background')
+  objects.forEach(obj => canvas.remove(obj))
+  canvas.discardActiveObject()
+  canvas.renderAll()
+  ElMessage.info('画布已清空')
 }
+</script>
 
-.menu-divider {
-  height: 1px;
-  background: $border-color;
-  margin: 4px 0;
-}
-
-:deep(.el-dropdown-menu__item) {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  min-width: 200px;
-  padding: 6px 20px;
-  font-size: $font-size-sm;
-}
-</style>

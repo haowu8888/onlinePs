@@ -48,6 +48,7 @@ export class ContentAwareFill {
     // Step 3: Remove selection overlay and capture canvas pixels
     canvas.remove(selectionObj)
     canvas.renderAll()
+    eventBus.emit('selection:changed', false)
 
     const ctx = canvas.getContext()
     // Get a region slightly larger than the mask for sampling (the "context" area)

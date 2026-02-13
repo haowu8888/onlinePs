@@ -9,6 +9,7 @@ import type {
   MagicWandToolOptions,
   BlurBrushToolOptions,
   DodgeBurnToolOptions,
+  PaintBucketToolOptions,
 } from '@/types/tool'
 
 export const useToolStore = defineStore('tool', () => {
@@ -68,6 +69,13 @@ export const useToolStore = defineStore('tool', () => {
     exposure: 0.3,
   })
 
+  const paintBucketOptions = ref<PaintBucketToolOptions>({
+    tolerance: 30,
+    opacity: 1,
+  })
+
+  const rulerMeasurement = ref<import('@/types/tool').RulerMeasurement | null>(null)
+
   function setTool(tool: ToolEnum) {
     previousTool.value = currentTool.value
     currentTool.value = tool
@@ -91,6 +99,10 @@ export const useToolStore = defineStore('tool', () => {
     currentTool.value = previousTool.value
   }
 
+  function setRulerMeasurement(m: import('@/types/tool').RulerMeasurement | null) {
+    rulerMeasurement.value = m
+  }
+
   return {
     currentTool,
     previousTool,
@@ -102,9 +114,12 @@ export const useToolStore = defineStore('tool', () => {
     magicWandOptions,
     blurBrushOptions,
     dodgeBurnOptions,
+    paintBucketOptions,
+    rulerMeasurement,
     setTool,
     setSlotTool,
     getSlotTool,
     revertTool,
+    setRulerMeasurement,
   }
 })

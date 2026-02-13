@@ -60,6 +60,9 @@ function initCanvas() {
   const canvas = canvasManager.init(canvasRef.value, rect.width, rect.height)
   canvasStore.setCanvas(canvas)
 
+  // Add default layer first so the background rect can be tagged
+  const bgLayer = layerStore.addLayer('背景')
+
   // Add default white background rect to represent document
   const bgRect = new fabric.Rect({
     width: editorStore.canvasWidth,
@@ -69,15 +72,13 @@ function initCanvas() {
     evented: false,
     name: '__background',
   })
+  ;(bgRect as any).__layerId = bgLayer.id
   canvas.add(bgRect)
   canvas.centerObject(bgRect)
   canvas.renderAll()
 
   // Initialize tool system
   initTools(canvas)
-
-  // Add default layer
-  layerStore.addLayer('背景')
 }
 
 function setupResizeObserver() {
@@ -120,19 +121,34 @@ function setupEventListeners() {
   canvas.on('path:created', (e: any) => {
     const path = e.path
     if (!path) return
+    // Tag with active layer
+    if (layerStore.activeLayerId) {
+      path.__layerId = layerStore.activeLayerId
+    }
     const command = new AddObjectCommand(canvas, path, '画笔绘制')
     historyStore.pushCommand(command)
     editorStore.markDirty()
+    updateThumbnail()
   })
 
   // Track shape/text creation for history and layers
   eventBus.on('tool:object-created', (payload) => {
+    // Tag with active layer
+    if (layerStore.activeLayerId) {
+      (payload.object as any).__layerId = layerStore.activeLayerId
+    }
     const command = new AddObjectCommand(canvas, payload.object, payload.name)
     historyStore.pushCommand(command)
     if (payload.layerName) {
       layerStore.addLayer(payload.layerName)
     }
     editorStore.markDirty()
+    updateThumbnail()
+  })
+
+  // Update thumbnail on object modifications
+  canvas.on('object:modified', () => {
+    updateThumbnail()
   })
 }
 
@@ -142,10 +158,14 @@ function importImage(dataUrl: string, name: string) {
 
   const imgEl = new Image()
   imgEl.onload = () => {
+    // Create the layer FIRST so we can tag the image with its ID
+    const newLayer = layerStore.addLayer(name)
+
     const fabricImg = new fabric.FabricImage(imgEl, {
       left: 0,
       top: 0,
     })
+    ;(fabricImg as any).__layerId = newLayer.id
 
     // Scale to fit canvas
     const canvasWidth = editorStore.canvasWidth
@@ -158,10 +178,41 @@ function importImage(dataUrl: string, name: string) {
     canvas.setActiveObject(fabricImg)
     canvas.renderAll()
 
-    layerStore.addLayer(name)
     editorStore.markDirty()
+    updateThumbnail()
   }
   imgEl.src = dataUrl
+}
+
+let thumbnailTimer: ReturnType<typeof setTimeout> | null = null
+
+function updateThumbnail() {
+  // Debounce thumbnail updates
+  if (thumbnailTimer) clearTimeout(thumbnailTimer)
+  thumbnailTimer = setTimeout(() => {
+    const canvas = canvasStore.canvasInstance
+    const activeId = layerStore.activeLayerId
+    if (!canvas || !activeId) return
+
+    // Create a small thumbnail from the canvas
+    const thumbSize = 36
+    const canvasEl = canvas.getElement()
+    const thumbCanvas = document.createElement('canvas')
+    thumbCanvas.width = thumbSize
+    thumbCanvas.height = thumbSize
+    const thumbCtx = thumbCanvas.getContext('2d')!
+
+    // Scale to fit thumbnail
+    const scale = Math.min(thumbSize / canvasEl.width, thumbSize / canvasEl.height)
+    const w = canvasEl.width * scale
+    const h = canvasEl.height * scale
+    const x = (thumbSize - w) / 2
+    const y = (thumbSize - h) / 2
+
+    thumbCtx.drawImage(canvasEl, x, y, w, h)
+    const dataUrl = thumbCanvas.toDataURL('image/png')
+    layerStore.updateLayer(activeId, { thumbnail: dataUrl })
+  }, 200)
 }
 
 function handleDrop(e: DragEvent) {

@@ -2,7 +2,7 @@ import { watch } from 'vue'
 import { useToolStore } from '@/stores/useToolStore'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { useCanvasStore } from '@/stores/useCanvasStore'
-import { getImplementedTool } from '@/constants/tools'
+import { getImplementedTool, ToolEnum } from '@/constants/tools'
 import { toolManager } from '@/core/tools/ToolManager'
 import { MoveTool } from '@/core/tools/MoveTool'
 import { SelectTool } from '@/core/tools/SelectTool'
@@ -18,11 +18,16 @@ import { CloneStampTool } from '@/core/tools/CloneStampTool'
 import { BlurBrushTool } from '@/core/tools/BlurBrushTool'
 import { DodgeBurnTool } from '@/core/tools/DodgeBurnTool'
 import { TransformTool } from '@/core/tools/TransformTool'
+import { PaintBucketTool } from '@/core/tools/PaintBucketTool'
+import { RulerTool } from '@/core/tools/RulerTool'
 import { RectSelectionTool } from '@/core/tools/selection/RectSelectionTool'
 import { EllipseSelectionTool } from '@/core/tools/selection/EllipseSelectionTool'
 import { LassoSelectionTool } from '@/core/tools/selection/LassoSelectionTool'
 import { MagicWandTool } from '@/core/tools/selection/MagicWandTool'
-import type * as fabric from 'fabric'
+import { PolygonalLassoTool } from '@/core/tools/selection/PolygonalLassoTool'
+import { MagneticLassoTool } from '@/core/tools/selection/MagneticLassoTool'
+import { createSelectionFromMask } from '@/core/selection/MaskToSelection'
+import * as fabric from 'fabric'
 
 export function useCanvas() {
   const toolStore = useToolStore()
@@ -35,6 +40,13 @@ export function useCanvas() {
     eyedropperTool.setColorCallback((color) => {
       editorStore.setForegroundColor(color)
     })
+
+    const rulerTool = new RulerTool()
+    rulerTool.setMeasureCallback((measurement) => {
+      toolStore.setRulerMeasurement(measurement)
+    })
+
+    const paintBucketTool = new PaintBucketTool()
 
     const tools = [
       new MoveTool(),
@@ -55,11 +67,18 @@ export function useCanvas() {
       new EllipseSelectionTool(),
       new LassoSelectionTool(),
       new MagicWandTool(),
+      new PolygonalLassoTool(),
+      new MagneticLassoTool(),
+      paintBucketTool,
+      rulerTool,
     ]
 
     tools.forEach(tool => toolManager.register(tool))
     toolManager.setCanvas(canvas)
     toolManager.switchTool(toolStore.currentTool)
+
+    // Setup quick mask path listener
+    setupQuickMaskPathListener(canvas)
   }
 
   // Watch for tool changes
@@ -108,6 +127,18 @@ export function useCanvas() {
         mode: toolStore.dodgeBurnOptions.mode,
         range: toolStore.dodgeBurnOptions.range,
       })
+    } else if (tool instanceof EraserTool) {
+      tool.setOptions({
+        size: toolStore.eraserOptions.size,
+        opacity: toolStore.eraserOptions.opacity,
+        backgroundColor: editorStore.backgroundColor,
+      })
+    } else if (tool instanceof PaintBucketTool) {
+      tool.setOptions({
+        tolerance: toolStore.paintBucketOptions.tolerance,
+        fillColor: editorStore.foregroundColor,
+        opacity: toolStore.paintBucketOptions.opacity,
+      })
     }
   })
 
@@ -127,7 +158,7 @@ export function useCanvas() {
   watch(() => toolStore.eraserOptions, (opts) => {
     const eraser = toolManager.getTool('eraser') as EraserTool | undefined
     if (eraser) {
-      eraser.setOptions({ size: opts.size, opacity: opts.opacity })
+      eraser.setOptions({ size: opts.size, opacity: opts.opacity, backgroundColor: editorStore.backgroundColor })
     }
   }, { deep: true })
 
@@ -160,12 +191,20 @@ export function useCanvas() {
     }
   }, { deep: true })
 
-  // Sync foreground color to brush/text
+  // Sync foreground color to brush/text/paint-bucket
   watch(() => editorStore.foregroundColor, (color) => {
     const brush = toolManager.getTool('brush') as BrushTool | undefined
     if (brush) brush.setOptions({ color })
     const text = toolManager.getTool('text') as TextTool | undefined
     if (text) text.setOptions({ color })
+    const paintBucket = toolManager.getTool('paint-bucket') as PaintBucketTool | undefined
+    if (paintBucket) paintBucket.setOptions({ fillColor: color })
+  })
+
+  // Sync background color to eraser
+  watch(() => editorStore.backgroundColor, (bgColor) => {
+    const eraser = toolManager.getTool('eraser') as EraserTool | undefined
+    if (eraser) eraser.setOptions({ backgroundColor: bgColor })
   })
 
   // Sync magic wand options
@@ -196,6 +235,157 @@ export function useCanvas() {
       })
     }
   }, { deep: true })
+
+  // Sync paint bucket options
+  watch(() => toolStore.paintBucketOptions, (opts) => {
+    const paintBucket = toolManager.getTool('paint-bucket') as PaintBucketTool | undefined
+    if (paintBucket) {
+      paintBucket.setOptions({
+        tolerance: opts.tolerance,
+        opacity: opts.opacity,
+        fillColor: editorStore.foregroundColor,
+      })
+    }
+  }, { deep: true })
+
+  // Quick mask mode
+  let savedForegroundColor = ''
+  let savedToolId: ToolEnum | null = null
+
+  watch(() => editorStore.quickMaskActive, (active) => {
+    const canvas = canvasStore.canvasInstance
+    if (!canvas) return
+
+    if (active) {
+      // Enter quick mask mode: save state, switch to brush, set red color
+      savedForegroundColor = editorStore.foregroundColor
+      savedToolId = toolStore.currentTool
+      toolStore.setTool(ToolEnum.Brush)
+      editorStore.setForegroundColor('rgba(255, 0, 0, 0.5)')
+
+      const brush = toolManager.getTool('brush') as BrushTool | undefined
+      if (brush) {
+        brush.setOptions({ color: 'rgba(255, 0, 0, 0.5)' })
+      }
+    } else {
+      // Exit quick mask mode: convert mask paths to selection
+      const maskObjects = canvas.getObjects().filter((o: any) => o.name === '__quickmask')
+
+      if (maskObjects.length > 0) {
+        // Remove existing selections
+        const existingSelections = canvas.getObjects().filter((o: any) => o.name === '__selection')
+        existingSelections.forEach(obj => canvas.remove(obj))
+
+        // Render mask objects to offscreen canvas
+        const canvasWidth = canvas.getWidth()
+        const canvasHeight = canvas.getHeight()
+        const offscreen = document.createElement('canvas')
+        offscreen.width = canvasWidth
+        offscreen.height = canvasHeight
+        const offCtx = offscreen.getContext('2d')!
+
+        const vpt = canvas.viewportTransform!
+
+        // Draw each mask object onto the offscreen canvas
+        for (const obj of maskObjects) {
+          if (obj instanceof fabric.Path) {
+            const pathData = (obj as any).path as any[]
+            if (!pathData) continue
+
+            const offsetX = obj.pathOffset?.x ?? 0
+            const offsetY = obj.pathOffset?.y ?? 0
+            const objLeft = obj.left ?? 0
+            const objTop = obj.top ?? 0
+            const scaleX = obj.scaleX ?? 1
+            const scaleY = obj.scaleY ?? 1
+
+            offCtx.beginPath()
+            for (const cmd of pathData) {
+              const type = cmd[0] as string
+              switch (type) {
+                case 'M': {
+                  const sx = ((cmd[1] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
+                  const sy = ((cmd[2] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+                  offCtx.moveTo(sx, sy)
+                  break
+                }
+                case 'L': {
+                  const sx = ((cmd[1] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
+                  const sy = ((cmd[2] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+                  offCtx.lineTo(sx, sy)
+                  break
+                }
+                case 'Q': {
+                  const sx1 = ((cmd[1] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
+                  const sy1 = ((cmd[2] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+                  const sx = ((cmd[3] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
+                  const sy = ((cmd[4] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+                  offCtx.quadraticCurveTo(sx1, sy1, sx, sy)
+                  break
+                }
+                case 'C': {
+                  const sx1 = ((cmd[1] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
+                  const sy1 = ((cmd[2] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+                  const sx2 = ((cmd[3] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
+                  const sy2 = ((cmd[4] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+                  const sx = ((cmd[5] - offsetX) * scaleX + objLeft) * vpt[0] + vpt[4]
+                  const sy = ((cmd[6] - offsetY) * scaleY + objTop) * vpt[3] + vpt[5]
+                  offCtx.bezierCurveTo(sx1, sy1, sx2, sy2, sx, sy)
+                  break
+                }
+                case 'Z':
+                case 'z':
+                  offCtx.closePath()
+                  break
+              }
+            }
+            // PencilBrush creates stroked paths, so we render with a thick white stroke
+            const strokeW = (obj.strokeWidth ?? 1) * (scaleX) * vpt[0]
+            offCtx.lineWidth = Math.max(strokeW, 2)
+            offCtx.strokeStyle = 'white'
+            offCtx.lineCap = 'round'
+            offCtx.lineJoin = 'round'
+            offCtx.stroke()
+            offCtx.fillStyle = 'white'
+            offCtx.fill()
+          }
+        }
+
+        // Convert offscreen canvas to mask
+        const imgData = offCtx.getImageData(0, 0, canvasWidth, canvasHeight)
+        const mask = new Uint8Array(canvasWidth * canvasHeight)
+        for (let i = 0; i < mask.length; i++) {
+          // Any pixel with non-zero alpha is part of the mask
+          if (imgData.data[i * 4 + 3] > 128) {
+            mask[i] = 1
+          }
+        }
+
+        // Remove mask objects
+        maskObjects.forEach(obj => canvas.remove(obj))
+
+        // Create selection from mask
+        createSelectionFromMask(canvas, mask, canvasWidth, canvasHeight, vpt)
+      }
+
+      // Restore previous state
+      if (savedForegroundColor) {
+        editorStore.setForegroundColor(savedForegroundColor)
+      }
+      if (savedToolId !== null) {
+        toolStore.setTool(savedToolId)
+      }
+    }
+  })
+
+  // Mark paths created during quick mask mode
+  function setupQuickMaskPathListener(canvas: fabric.Canvas) {
+    canvas.on('path:created' as any, (e: any) => {
+      if (editorStore.quickMaskActive && e.path) {
+        e.path.set({ name: '__quickmask' })
+      }
+    })
+  }
 
   return { initTools }
 }

@@ -25,15 +25,7 @@
 import { computed } from 'vue'
 import { TOOL_LIST } from '@/constants/tools'
 import type { ToolEnum } from '@/constants/tools'
-import {
-  Pointer, Rank, CopyDocument, CircleCheck, Edit, MagicStick,
-  Crop, View, Brush, Delete, Stamp, TrendCharts,
-  EditPen, Minus, Position, FullScreen, Cloudy, Sunny,
-  ScaleToOriginal, Sort, Share, Magnet, Aim, Grid,
-  DataLine, Notebook, BrushFilled, Opportunity, ColdDrink,
-  CircleClose, Close, Connection, CirclePlus, Remove, Switch,
-  Document, Star, SemiSelect, HelpFilled,
-} from '@element-plus/icons-vue'
+import { TOOL_ICON_MAP } from '@/constants/toolIcons'
 
 const props = defineProps<{
   toolId: ToolEnum
@@ -48,19 +40,9 @@ const emit = defineEmits<{
 
 const toolInfo = computed(() => TOOL_LIST.find(t => t.id === props.toolId))
 
-const iconMap: Record<string, any> = {
-  Pointer, Move: Rank, CopyDocument, CircleCheck, Edit, MagicStick,
-  Crop, View, Brush, Delete, Stamp, TrendCharts,
-  EditPen, Minus, Position, FullScreen, Cloudy, Sunny,
-  ScaleToOriginal, Sort, Share, Magnet, Aim, Grid,
-  DataLine, Notebook, BrushFilled, Opportunity, ColdDrink,
-  CircleClose, Close, Connection, CirclePlus, Remove, Switch,
-  Document, Star, SemiSelect, HelpFilled,
-}
-
 const iconComponent = computed(() => {
   const iconName = toolInfo.value?.icon
-  return iconName ? iconMap[iconName] : null
+  return iconName ? TOOL_ICON_MAP[iconName] : null
 })
 
 let longPressTimer: ReturnType<typeof setTimeout> | null = null

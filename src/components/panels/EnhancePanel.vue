@@ -46,10 +46,15 @@ import { applyAutoEffect } from '@/core/filters/AutoEnhance'
 import { ContentAwareFill } from '@/core/selection/ContentAwareFill'
 import { DataLine, PieChart, MagicStick, Delete } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import eventBus from '@/core/canvas/CanvasEventBus'
 import * as fabric from 'fabric'
 
 const canvasStore = useCanvasStore()
 const hasSelection = ref(false)
+
+function onSelectionChanged(exists: boolean) {
+  hasSelection.value = exists
+}
 
 function getTargetImage(): fabric.FabricImage | null {
   const canvas = canvasStore.canvasInstance
@@ -107,23 +112,12 @@ function handleRemoveWatermark() {
   ContentAwareFill.execute(canvas)
 }
 
-function checkSelection() {
-  const canvas = canvasStore.canvasInstance
-  if (!canvas) {
-    hasSelection.value = false
-    return
-  }
-  hasSelection.value = canvas.getObjects().some((obj: any) => obj.name === '__selection')
-}
-
-let intervalId: ReturnType<typeof setInterval> | null = null
-
 onMounted(() => {
-  intervalId = setInterval(checkSelection, 300)
+  eventBus.on('selection:changed', onSelectionChanged)
 })
 
 onBeforeUnmount(() => {
-  if (intervalId) clearInterval(intervalId)
+  eventBus.off('selection:changed', onSelectionChanged)
 })
 </script>
 

@@ -53,13 +53,22 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useLayerStore } from '@/stores/useLayerStore'
+import { useCanvasStore } from '@/stores/useCanvasStore'
 import { BLEND_MODES } from '@/constants/blendModes'
 import { Plus, CopyDocument, Delete, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import LayerItem from './LayerItem.vue'
 
 const layerStore = useLayerStore()
+const canvasStore = useCanvasStore()
 const blendMode = ref('source-over')
 const opacity = ref(100)
+
+/** Get all canvas objects belonging to a layer. */
+function getLayerObjects(layerId: string) {
+  const canvas = canvasStore.canvasInstance
+  if (!canvas) return []
+  return canvas.getObjects().filter((o: any) => o.__layerId === layerId)
+}
 
 watch(() => layerStore.activeLayer, (layer) => {
   if (layer) {
@@ -72,25 +81,53 @@ watch(() => layerStore.activeLayer, (layer) => {
 })
 
 watch(blendMode, (val) => {
-  if (layerStore.activeLayerId) {
-    layerStore.updateLayer(layerStore.activeLayerId, { blendMode: val })
+  if (!layerStore.activeLayerId) return
+  layerStore.updateLayer(layerStore.activeLayerId, { blendMode: val })
+  // Apply blend mode to canvas objects
+  const objs = getLayerObjects(layerStore.activeLayerId)
+  for (const obj of objs) {
+    ;(obj as any).globalCompositeOperation = val
   }
+  canvasStore.canvasInstance?.renderAll()
 })
 
 watch(opacity, (val) => {
-  if (layerStore.activeLayerId) {
-    layerStore.updateLayer(layerStore.activeLayerId, { opacity: val / 100 })
+  if (!layerStore.activeLayerId) return
+  layerStore.updateLayer(layerStore.activeLayerId, { opacity: val / 100 })
+  // Apply opacity to canvas objects
+  const objs = getLayerObjects(layerStore.activeLayerId)
+  for (const obj of objs) {
+    obj.set({ opacity: val / 100 })
   }
+  canvasStore.canvasInstance?.renderAll()
 })
 
 function toggleVisibility(id: string) {
   const layer = layerStore.layers.find(l => l.id === id)
-  if (layer) layerStore.updateLayer(id, { visible: !layer.visible })
+  if (!layer) return
+  const newVisible = !layer.visible
+  layerStore.updateLayer(id, { visible: newVisible })
+  // Show/hide all canvas objects in this layer
+  const objs = getLayerObjects(id)
+  for (const obj of objs) {
+    obj.set({ visible: newVisible })
+  }
+  canvasStore.canvasInstance?.renderAll()
 }
 
 function toggleLock(id: string) {
   const layer = layerStore.layers.find(l => l.id === id)
-  if (layer) layerStore.updateLayer(id, { locked: !layer.locked })
+  if (!layer) return
+  const newLocked = !layer.locked
+  layerStore.updateLayer(id, { locked: newLocked })
+  // Lock/unlock all canvas objects in this layer
+  const objs = getLayerObjects(id)
+  for (const obj of objs) {
+    // Background and selection objects are always non-interactive
+    if ((obj as any).name === '__background') continue
+    obj.set({ selectable: !newLocked, evented: !newLocked })
+  }
+  canvasStore.canvasInstance?.renderAll()
 }
 
 function duplicateActive() {
@@ -98,7 +135,17 @@ function duplicateActive() {
 }
 
 function removeActive() {
-  if (layerStore.activeLayerId) layerStore.removeLayer(layerStore.activeLayerId)
+  const canvas = canvasStore.canvasInstance
+  const id = layerStore.activeLayerId
+  if (!canvas || !id) return
+
+  // Remove all canvas objects belonging to this layer
+  const objs = getLayerObjects(id)
+  objs.forEach(obj => canvas.remove(obj))
+  canvas.renderAll()
+
+  // Remove layer data
+  layerStore.removeLayer(id)
 }
 
 function moveActive(dir: 'up' | 'down') {

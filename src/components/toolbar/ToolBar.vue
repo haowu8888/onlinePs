@@ -17,6 +17,7 @@
     </div>
     <div class="toolbar__bottom">
       <ColorSelector />
+      <QuickMaskButton />
     </div>
 
     <ToolFlyout
@@ -39,6 +40,7 @@ import { useToolStore } from '@/stores/useToolStore'
 import ToolButton from './ToolButton.vue'
 import ToolFlyout from './ToolFlyout.vue'
 import ColorSelector from './ColorSelector.vue'
+import QuickMaskButton from './QuickMaskButton.vue'
 
 const toolStore = useToolStore()
 

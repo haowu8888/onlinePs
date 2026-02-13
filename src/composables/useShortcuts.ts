@@ -174,12 +174,23 @@ export function useShortcuts() {
         break
       case 'deselect':
         if (canvas) {
+          // Remove selection overlays (__selection objects)
+          const selObjs = canvas.getObjects().filter(
+            (o: any) => o.name === '__selection' || o.name === '__selection_preview'
+          )
+          selObjs.forEach(obj => canvas.remove(obj))
+          if (selObjs.length > 0) {
+            eventBus.emit('selection:changed', false)
+          }
           canvas.discardActiveObject()
           canvas.renderAll()
         }
         break
       case 'new-layer':
         layerStore.addLayer()
+        break
+      case 'quick-mask':
+        editorStore.toggleQuickMask()
         break
     }
   }

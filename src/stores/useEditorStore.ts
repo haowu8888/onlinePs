@@ -8,6 +8,7 @@ export const useEditorStore = defineStore('editor', () => {
   const backgroundColor = ref('#ffffff')
   const canvasWidth = ref(1200)
   const canvasHeight = ref(800)
+  const quickMaskActive = ref(false)
 
   function setForegroundColor(color: string) {
     foregroundColor.value = color
@@ -45,6 +46,10 @@ export const useEditorStore = defineStore('editor', () => {
     canvasHeight.value = height
   }
 
+  function toggleQuickMask() {
+    quickMaskActive.value = !quickMaskActive.value
+  }
+
   return {
     documentName,
     isDirty,
@@ -52,6 +57,7 @@ export const useEditorStore = defineStore('editor', () => {
     backgroundColor,
     canvasWidth,
     canvasHeight,
+    quickMaskActive,
     setForegroundColor,
     setBackgroundColor,
     swapColors,
@@ -60,5 +66,6 @@ export const useEditorStore = defineStore('editor', () => {
     markDirty,
     markClean,
     setCanvasSize,
+    toggleQuickMask,
   }
 })

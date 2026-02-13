@@ -19,10 +19,14 @@
 import { EDIT_MENU } from '@/constants/menu'
 import { useHistoryStore } from '@/stores/useHistoryStore'
 import { useCanvasStore } from '@/stores/useCanvasStore'
+import { useEditorStore } from '@/stores/useEditorStore'
+import { copyFromSelection, extractSelection, pasteSelectionClipboard, deleteInSelection } from '@/core/selection/SelectionOperations'
+import eventBus from '@/core/canvas/CanvasEventBus'
 import * as fabric from 'fabric'
 
 const historyStore = useHistoryStore()
 const canvasStore = useCanvasStore()
+const editorStore = useEditorStore()
 
 function handleCommand(action: string) {
   const canvas = canvasStore.canvasInstance
@@ -32,6 +36,56 @@ function handleCommand(action: string) {
       break
     case 'redo':
       historyStore.redo()
+      break
+    case 'cut':
+      if (canvas) {
+        const selObjCut = canvas.getObjects().find((o: any) => o.name === '__selection')
+        if (selObjCut) {
+          extractSelection(canvas, editorStore.backgroundColor)
+          break
+        }
+        const active = canvas.getActiveObject()
+        if (active) {
+          active.clone().then((cloned: any) => {
+            (window as any).__clipboard = cloned
+          })
+          canvas.remove(active)
+          canvas.renderAll()
+          editorStore.markDirty()
+        }
+      }
+      break
+    case 'copy':
+      if (canvas) {
+        const selObjCopy = canvas.getObjects().find((o: any) => o.name === '__selection')
+        if (selObjCopy) {
+          copyFromSelection(canvas)
+          break
+        }
+        const active = canvas.getActiveObject()
+        if (active) {
+          active.clone().then((cloned: any) => {
+            (window as any).__clipboard = cloned
+          })
+        }
+      }
+      break
+    case 'paste':
+      if (canvas) {
+        if ((window as any).__selectionClipboard) {
+          pasteSelectionClipboard(canvas)
+          break
+        }
+        if ((window as any).__clipboard) {
+          (window as any).__clipboard.clone().then((cloned: any) => {
+            cloned.set({ left: (cloned.left || 0) + 10, top: (cloned.top || 0) + 10 })
+            canvas.add(cloned)
+            canvas.setActiveObject(cloned)
+            canvas.renderAll()
+            editorStore.markDirty()
+          })
+        }
+      }
       break
     case 'select-all':
       if (canvas) {
@@ -45,11 +99,26 @@ function handleCommand(action: string) {
       }
       break
     case 'deselect':
-      canvas?.discardActiveObject()
-      canvas?.requestRenderAll()
+      if (canvas) {
+        // Remove selection overlays
+        const selObjs = canvas.getObjects().filter(
+          (o: any) => o.name === '__selection' || o.name === '__selection_preview'
+        )
+        selObjs.forEach(obj => canvas.remove(obj))
+        if (selObjs.length > 0) {
+          eventBus.emit('selection:changed', false)
+        }
+        canvas.discardActiveObject()
+        canvas.requestRenderAll()
+      }
       break
     case 'delete':
       if (canvas) {
+        const selObjDel = canvas.getObjects().find((o: any) => o.name === '__selection')
+        if (selObjDel) {
+          deleteInSelection(canvas, editorStore.backgroundColor)
+          break
+        }
         const active = canvas.getActiveObjects()
         active.forEach((obj: any) => {
           if (obj.name !== '__background') canvas.remove(obj)
@@ -62,20 +131,3 @@ function handleCommand(action: string) {
 }
 </script>
 
-<style scoped lang="scss">
-.menu-trigger {
-  padding: 4px 10px;
-  cursor: pointer;
-  font-size: $font-size-sm;
-  color: $text-primary;
-  border-radius: 2px;
-  &:hover { background: $bg-light; }
-}
-.menu-item-label { flex: 1; }
-.menu-item-shortcut { margin-left: 30px; color: $text-muted; font-size: $font-size-xs; }
-.menu-divider { height: 1px; background: $border-color; margin: 4px 0; }
-:deep(.el-dropdown-menu__item) {
-  display: flex; justify-content: space-between; align-items: center;
-  min-width: 200px; padding: 6px 20px; font-size: $font-size-sm;
-}
-</style>

@@ -48,4 +48,7 @@ export const SHORTCUTS = {
   // Swap colors
   'x': 'swap-colors',
   'd': 'default-colors',
+
+  // Quick mask
+  'q': 'quick-mask',
 } as const

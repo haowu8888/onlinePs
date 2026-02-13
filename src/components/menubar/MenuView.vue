@@ -30,16 +30,3 @@ function handleCommand(action: string) {
 }
 </script>
 
-<style scoped lang="scss">
-.menu-trigger {
-  padding: 4px 10px; cursor: pointer; font-size: $font-size-sm;
-  color: $text-primary; border-radius: 2px;
-  &:hover { background: $bg-light; }
-}
-.menu-item-label { flex: 1; }
-.menu-item-shortcut { margin-left: 30px; color: $text-muted; font-size: $font-size-xs; }
-:deep(.el-dropdown-menu__item) {
-  display: flex; justify-content: space-between; align-items: center;
-  min-width: 200px; padding: 6px 20px; font-size: $font-size-sm;
-}
-</style>

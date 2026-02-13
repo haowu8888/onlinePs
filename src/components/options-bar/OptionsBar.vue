@@ -8,10 +8,12 @@
     <MagicWandOptions v-else-if="isMagicWand" />
     <BlurBrushOptions v-else-if="isBlurBrush" />
     <DodgeBurnOptions v-else-if="isDodgeBurn" />
+    <PaintBucketOptions v-else-if="isPaintBucket" />
+    <RulerOptions v-else-if="isRuler" />
     <div v-else class="options-bar__default">
       <span class="options-bar__tool-name">{{ currentToolName }}</span>
     </div>
-    <template v-if="isSelectionTool">
+    <template v-if="showSelectionOptions">
       <span class="options-bar__separator" />
       <SelectionOptions />
     </template>
@@ -19,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useToolStore } from '@/stores/useToolStore'
 import { ToolEnum, TOOL_LIST } from '@/constants/tools'
 import BrushOptions from './BrushOptions.vue'
@@ -29,8 +31,24 @@ import MagicWandOptions from './MagicWandOptions.vue'
 import BlurBrushOptions from './BlurBrushOptions.vue'
 import DodgeBurnOptions from './DodgeBurnOptions.vue'
 import SelectionOptions from './SelectionOptions.vue'
+import PaintBucketOptions from './PaintBucketOptions.vue'
+import RulerOptions from './RulerOptions.vue'
+import eventBus from '@/core/canvas/CanvasEventBus'
 
 const toolStore = useToolStore()
+const hasActiveSelection = ref(false)
+
+function onSelectionChanged(exists: boolean) {
+  hasActiveSelection.value = exists
+}
+
+onMounted(() => {
+  eventBus.on('selection:changed', onSelectionChanged)
+})
+
+onBeforeUnmount(() => {
+  eventBus.off('selection:changed', onSelectionChanged)
+})
 
 const isBrushTool = computed(() =>
   [ToolEnum.Brush, ToolEnum.Eraser, ToolEnum.CloneStamp].includes(toolStore.currentTool)
@@ -41,12 +59,19 @@ const isTextTool = computed(() => toolStore.currentTool === ToolEnum.Text)
 const isMagicWand = computed(() => toolStore.currentTool === ToolEnum.MagicWand)
 const isBlurBrush = computed(() => toolStore.currentTool === ToolEnum.BlurBrush)
 const isDodgeBurn = computed(() => toolStore.currentTool === ToolEnum.DodgeBurn)
+const isPaintBucket = computed(() => toolStore.currentTool === ToolEnum.PaintBucket)
+const isRuler = computed(() => toolStore.currentTool === ToolEnum.Ruler)
 const isSelectionTool = computed(() =>
-  [ToolEnum.RectSelection, ToolEnum.EllipseSelection, ToolEnum.Lasso, ToolEnum.MagicWand].includes(toolStore.currentTool)
+  [ToolEnum.RectSelection, ToolEnum.EllipseSelection, ToolEnum.Lasso, ToolEnum.PolygonalLasso, ToolEnum.MagneticLasso, ToolEnum.MagicWand].includes(toolStore.currentTool)
+)
+
+// Show SelectionOptions when a selection tool is active OR when a selection exists on canvas
+const showSelectionOptions = computed(() =>
+  isSelectionTool.value || hasActiveSelection.value
 )
 
 const hasToolOptions = computed(() =>
-  isBrushTool.value || isShapeTool.value || isTextTool.value || isMagicWand.value || isBlurBrush.value || isDodgeBurn.value
+  isBrushTool.value || isShapeTool.value || isTextTool.value || isMagicWand.value || isBlurBrush.value || isDodgeBurn.value || isPaintBucket.value || isRuler.value
 )
 
 const currentToolName = computed(() =>

@@ -1,5 +1,5 @@
 <template>
-  <div class="dodge-burn-options">
+  <div class="tool-options">
     <label class="options-label">模式</label>
     <el-radio-group v-model="toolStore.dodgeBurnOptions.mode" size="small">
       <el-radio-button value="dodge">减淡</el-radio-button>
@@ -36,41 +36,6 @@ const toolStore = useToolStore()
 </script>
 
 <style scoped lang="scss">
-.dodge-burn-options {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 100%;
-}
-
-.options-label {
-  font-size: $font-size-xs;
-  color: $text-secondary;
-  white-space: nowrap;
-}
-
-.options-slider {
-  width: 100px;
-  :deep(.el-slider__runway) { height: 4px; }
-  :deep(.el-slider__button) { width: 12px; height: 12px; }
-}
-
-.options-input {
-  width: 70px;
-}
-
-.options-value {
-  font-size: $font-size-xs;
-  color: $text-primary;
-  min-width: 32px;
-}
-
-.options-separator {
-  width: 1px;
-  height: 20px;
-  background: $border-color;
-}
-
 .range-select {
   width: 90px;
 }

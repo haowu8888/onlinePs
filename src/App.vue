@@ -3,6 +3,7 @@
   <NewCanvasDialog v-model="showNewCanvas" @create="handleNewCanvas" />
   <ExportDialog v-model="showExport" />
   <CanvasResizeDialog v-model="showCanvasResize" @resize="handleCanvasResize" />
+  <ImageResizeDialog v-model="showImageResize" @resize="handleImageResize" />
 </template>
 
 <script setup lang="ts">
@@ -11,6 +12,7 @@ import EditorLayout from '@/components/layout/EditorLayout.vue'
 import NewCanvasDialog from '@/components/dialogs/NewCanvasDialog.vue'
 import ExportDialog from '@/components/dialogs/ExportDialog.vue'
 import CanvasResizeDialog from '@/components/dialogs/CanvasResizeDialog.vue'
+import ImageResizeDialog from '@/components/dialogs/ImageResizeDialog.vue'
 import { useShortcuts } from '@/composables/useShortcuts'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { useCanvasStore } from '@/stores/useCanvasStore'
@@ -28,11 +30,13 @@ const layerStore = useLayerStore()
 const showNewCanvas = ref(false)
 const showExport = ref(false)
 const showCanvasResize = ref(false)
+const showImageResize = ref(false)
 
 // Listen for dialog open events
 eventBus.on('dialog:new-canvas', () => { showNewCanvas.value = true })
 eventBus.on('dialog:export', () => { showExport.value = true })
 eventBus.on('dialog:canvas-size', () => { showCanvasResize.value = true })
+eventBus.on('dialog:image-size', () => { showImageResize.value = true })
 
 function handleNewCanvas(config: { name: string; width: number; height: number; bgColor: string }) {
   editorStore.setDocumentName(config.name)
@@ -76,6 +80,44 @@ function handleCanvasResize(size: { width: number; height: number }) {
   }
 }
 
+function handleImageResize(size: { width: number; height: number }) {
+  const canvas = canvasStore.canvasInstance
+  if (!canvas) return
+
+  const oldW = editorStore.canvasWidth
+  const oldH = editorStore.canvasHeight
+  if (oldW <= 0 || oldH <= 0) return
+
+  const scaleX = size.width / oldW
+  const scaleY = size.height / oldH
+
+  editorStore.setCanvasSize(size.width, size.height)
+
+  // Scale all objects proportionally
+  canvas.getObjects().forEach((obj: any) => {
+    if (obj.name === '__background') {
+      obj.set({ width: size.width, height: size.height })
+    } else {
+      obj.set({
+        left: (obj.left ?? 0) * scaleX,
+        top: (obj.top ?? 0) * scaleY,
+        scaleX: (obj.scaleX ?? 1) * scaleX,
+        scaleY: (obj.scaleY ?? 1) * scaleY,
+      })
+      obj.setCoords()
+    }
+  })
+
+  canvas.getObjects().forEach((obj: any) => {
+    if (obj.name === '__background') {
+      canvas.centerObject(obj)
+    }
+  })
+
+  canvas.renderAll()
+  editorStore.markDirty()
+}
+
 // Warn before leaving if dirty
 onMounted(() => {
   window.addEventListener('beforeunload', handleBeforeUnload)
@@ -92,13 +134,3 @@ function handleBeforeUnload(e: BeforeUnloadEvent) {
   }
 }
 </script>
-
-<style>
-html, body, #app {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-</style>

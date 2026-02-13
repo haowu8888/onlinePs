@@ -51,7 +51,7 @@
         class="applied-filter"
       >
         <span>{{ getFilterName(af.filterId) }}</span>
-        <button class="icon-btn" @click="filterStore.removeFilter(index)">
+        <button class="icon-btn" @click="removeAppliedFilter(index)">
           <el-icon><Close /></el-icon>
         </button>
       </div>
@@ -106,6 +106,19 @@ function applyCurrentFilter() {
   canvas.renderAll()
 
   filterStore.applyFilter()
+}
+
+function removeAppliedFilter(index: number) {
+  const canvas = canvasStore.canvasInstance
+  if (canvas) {
+    const activeObj = canvas.getActiveObject()
+    if (activeObj && activeObj instanceof fabric.FabricImage && activeObj.filters) {
+      activeObj.filters.splice(index, 1)
+      activeObj.applyFilters()
+      canvas.renderAll()
+    }
+  }
+  filterStore.removeFilter(index)
 }
 </script>
 

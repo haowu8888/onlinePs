@@ -82,3 +82,84 @@
   min-width: 180px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
+
+// ===== Shared menu styles =====
+.menu-trigger {
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: $font-size-sm;
+  color: $text-primary;
+  border-radius: 2px;
+
+  &:hover {
+    background: $bg-light;
+  }
+}
+
+.menu-item-label {
+  flex: 1;
+}
+
+.menu-item-shortcut {
+  margin-left: 30px;
+  color: $text-muted;
+  font-size: $font-size-xs;
+}
+
+.menu-divider {
+  height: 1px;
+  background: $border-color;
+  margin: 4px 0;
+}
+
+.el-dropdown-menu__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 200px;
+  padding: 6px 20px;
+  font-size: $font-size-sm;
+}
+
+// ===== Shared options-bar styles =====
+.tool-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+}
+
+.options-label {
+  font-size: $font-size-xs;
+  color: $text-secondary;
+  white-space: nowrap;
+}
+
+.options-slider {
+  width: 100px;
+
+  .el-slider__runway {
+    height: 4px;
+  }
+
+  .el-slider__button {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.options-input {
+  width: 70px;
+}
+
+.options-value {
+  font-size: $font-size-xs;
+  color: $text-primary;
+  min-width: 32px;
+}
+
+.options-separator {
+  width: 1px;
+  height: 20px;
+  background: $border-color;
+}

@@ -33,6 +33,9 @@ function handleCommand(action: string) {
     case 'canvas-size':
       eventBus.emit('dialog:canvas-size')
       break
+    case 'image-size':
+      eventBus.emit('dialog:image-size')
+      break
     case 'auto-levels':
     case 'auto-contrast':
     case 'auto-enhance':
@@ -108,16 +111,3 @@ function rotateCanvas(angle: number) {
 }
 </script>
 
-<style scoped lang="scss">
-.menu-trigger {
-  padding: 4px 10px; cursor: pointer; font-size: $font-size-sm;
-  color: $text-primary; border-radius: 2px;
-  &:hover { background: $bg-light; }
-}
-.menu-item-label { flex: 1; }
-.menu-divider { height: 1px; background: $border-color; margin: 4px 0; }
-:deep(.el-dropdown-menu__item) {
-  display: flex; justify-content: space-between; align-items: center;
-  min-width: 200px; padding: 6px 20px; font-size: $font-size-sm;
-}
-</style>

@@ -12,7 +12,8 @@
     </button>
 
     <div class="layer-item__thumbnail">
-      <div class="thumbnail-placeholder" />
+      <img v-if="layer.thumbnail" :src="layer.thumbnail" class="thumbnail-image" />
+      <div v-else class="thumbnail-placeholder" />
     </div>
 
     <div class="layer-item__info">
@@ -75,6 +76,12 @@ defineEmits(['select', 'toggle-visibility', 'toggle-lock'])
     border-radius: 3px;
     overflow: hidden;
     background: #fff;
+
+    .thumbnail-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
 
     .thumbnail-placeholder {
       width: 100%;

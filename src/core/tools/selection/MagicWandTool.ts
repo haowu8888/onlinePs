@@ -1,5 +1,7 @@
 import { BaseTool } from '../BaseTool'
 import * as fabric from 'fabric'
+import { createSelectionFromMask } from '@/core/selection/MaskToSelection'
+import eventBus from '@/core/canvas/CanvasEventBus'
 
 export class MagicWandTool extends BaseTool {
   readonly id = 'magic-wand'
@@ -26,19 +28,20 @@ export class MagicWandTool extends BaseTool {
   }
 
   protected onDeactivate() {
-    this.removeSelection()
+    // Do NOT remove selection — let it persist across tool switches.
     if (!this.canvas) return
     this.canvas.selection = true
+    // Restore object interactivity
     this.canvas.forEachObject(obj => {
-      if ((obj as any).name !== '__background' && (obj as any).name !== '__selection') {
-        obj.set({ selectable: true, evented: true })
-      }
+      const name = (obj as any).name as string | undefined
+      if (name === '__background' || name === '__selection' || name === '__selection_preview') return
+      obj.set({ selectable: true, evented: true })
     })
   }
 
   onMouseDown(event: fabric.TPointerEventInfo) {
     if (!this.canvas) return
-    this.removeSelection()
+    this.removeExistingSelection()
 
     const pointer = this.canvas.getScenePoint(event.e)
     const vpt = this.canvas.viewportTransform!
@@ -149,96 +152,28 @@ export class MagicWandTool extends BaseTool {
     vpt: number[]
   ) {
     if (!this.canvas) return
-
-    // Find bounding box of the selected region
-    let minX = width, minY = height, maxX = 0, maxY = 0
-    let hasSelection = false
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        if (mask[y * width + x]) {
-          hasSelection = true
-          if (x < minX) minX = x
-          if (y < minY) minY = y
-          if (x > maxX) maxX = x
-          if (y > maxY) maxY = y
-        }
-      }
-    }
-
-    if (!hasSelection) return
-
-    // Trace contour by scanning each row for leftmost and rightmost edges
-    const rangeH = maxY - minY
-    const step = Math.max(1, Math.floor(rangeH / 300))
-
-    const leftEdge: number[] = []
-    const rightEdge: number[] = []
-
-    for (let y = minY; y <= maxY; y += step) {
-      let foundLeft = -1
-      let foundRight = -1
-      for (let x = minX; x <= maxX; x++) {
-        if (mask[y * width + x]) {
-          if (foundLeft === -1) foundLeft = x
-          foundRight = x
-        }
-      }
-      if (foundLeft !== -1) {
-        leftEdge.push(foundLeft, y)
-        rightEdge.push(foundRight, y)
-      }
-    }
-
-    // Ensure last row is included
-    if (leftEdge.length >= 2 && leftEdge[leftEdge.length - 1] !== maxY) {
-      let foundLeft = -1
-      let foundRight = -1
-      for (let x = minX; x <= maxX; x++) {
-        if (mask[maxY * width + x]) {
-          if (foundLeft === -1) foundLeft = x
-          foundRight = x
-        }
-      }
-      if (foundLeft !== -1) {
-        leftEdge.push(foundLeft, maxY)
-        rightEdge.push(foundRight, maxY)
-      }
-    }
-
-    if (leftEdge.length < 4) return
-
-    // Build SVG path: left edge top-to-bottom, then right edge bottom-to-top
-    let pathData = ''
-    for (let i = 0; i < leftEdge.length; i += 2) {
-      const sx = (leftEdge[i] - vpt[4]) / vpt[0]
-      const sy = (leftEdge[i + 1] - vpt[5]) / vpt[3]
-      pathData += i === 0 ? `M ${sx} ${sy}` : ` L ${sx} ${sy}`
-    }
-    for (let i = rightEdge.length - 2; i >= 0; i -= 2) {
-      const sx = (rightEdge[i] - vpt[4]) / vpt[0]
-      const sy = (rightEdge[i + 1] - vpt[5]) / vpt[3]
-      pathData += ` L ${sx} ${sy}`
-    }
-    pathData += ' Z'
-
-    this.selectionPath = new fabric.Path(pathData, {
-      fill: 'rgba(0,120,212,0.1)',
-      stroke: '#0078d4',
-      strokeWidth: 1,
-      strokeDashArray: [4, 4],
-      selectable: false,
-      evented: false,
-      name: '__selection',
-    })
-
-    this.canvas.add(this.selectionPath)
-    this.canvas.renderAll()
+    this.selectionPath = createSelectionFromMask(this.canvas, mask, width, height, vpt)
+    eventBus.emit('selection:changed', true)
   }
 
   private removeSelection() {
     if (this.selectionPath && this.canvas) {
       this.canvas.remove(this.selectionPath)
       this.selectionPath = null
+      eventBus.emit('selection:changed', false)
+    }
+  }
+
+  /** Remove any existing __selection from the canvas (from any tool). */
+  private removeExistingSelection() {
+    if (!this.canvas) return
+    const existing = this.canvas.getObjects().filter(
+      (o: any) => o.name === '__selection' || o.name === '__selection_preview'
+    )
+    existing.forEach(obj => this.canvas!.remove(obj))
+    this.selectionPath = null
+    if (existing.length > 0) {
+      eventBus.emit('selection:changed', false)
     }
   }
 }

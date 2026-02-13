@@ -1,5 +1,6 @@
 import { BaseTool } from './BaseTool'
 import * as fabric from 'fabric'
+import tinycolor from 'tinycolor2'
 
 export class EraserTool extends BaseTool {
   readonly id = 'eraser'
@@ -8,10 +9,12 @@ export class EraserTool extends BaseTool {
 
   private eraserSize = 20
   private eraserOpacity = 1
+  private backgroundColor = '#ffffff'
 
-  setOptions(options: { size?: number; opacity?: number }) {
+  setOptions(options: { size?: number; opacity?: number; backgroundColor?: string }) {
     if (options.size !== undefined) this.eraserSize = options.size
     if (options.opacity !== undefined) this.eraserOpacity = options.opacity
+    if (options.backgroundColor !== undefined) this.backgroundColor = options.backgroundColor
     this.updateEraser()
   }
 
@@ -32,10 +35,9 @@ export class EraserTool extends BaseTool {
     if (!this.canvas) return
     const brush = new fabric.PencilBrush(this.canvas)
     brush.width = this.eraserSize
-    // Use background-matching color with opacity
-    // White for default white canvas backgrounds
     const alpha = this.eraserOpacity
-    brush.color = `rgba(255, 255, 255, ${alpha})`
+    const color = tinycolor(this.backgroundColor).setAlpha(alpha)
+    brush.color = color.toRgbString()
     this.canvas.freeDrawingBrush = brush
   }
 

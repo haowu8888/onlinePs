@@ -46,13 +46,3 @@ D - 默认颜色`,
 }
 </script>
 
-<style scoped lang="scss">
-.menu-trigger {
-  padding: 4px 10px; cursor: pointer; font-size: $font-size-sm;
-  color: $text-primary; border-radius: 2px;
-  &:hover { background: $bg-light; }
-}
-:deep(.el-dropdown-menu__item) {
-  min-width: 180px; padding: 6px 20px; font-size: $font-size-sm;
-}
-</style>

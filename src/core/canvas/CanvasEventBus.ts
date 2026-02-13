@@ -7,6 +7,7 @@ export type CanvasEvents = {
   'selection:created': any
   'selection:updated': any
   'selection:cleared': any
+  'selection:changed': boolean
   'mouse:down': any
   'mouse:move': any
   'mouse:up': any
@@ -21,6 +22,7 @@ export type CanvasEvents = {
   'dialog:new-canvas': void
   'dialog:export': void
   'dialog:canvas-size': void
+  'dialog:image-size': void
 }
 
 const eventBus = mitt<CanvasEvents>()

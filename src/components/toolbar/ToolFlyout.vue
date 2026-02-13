@@ -30,15 +30,7 @@
 <script setup lang="ts">
 import { TOOL_LIST } from '@/constants/tools'
 import type { ToolEnum } from '@/constants/tools'
-import {
-  Pointer, Rank, CopyDocument, CircleCheck, Edit, MagicStick,
-  Crop, View, Brush, Delete, Stamp, TrendCharts,
-  EditPen, Minus, Position, FullScreen, Cloudy, Sunny,
-  ScaleToOriginal, Sort, Share, Magnet, Aim, Grid,
-  DataLine, Notebook, BrushFilled, Opportunity, ColdDrink,
-  CircleClose, Close, Connection, CirclePlus, Remove, Switch,
-  Document, Star, SemiSelect, HelpFilled,
-} from '@element-plus/icons-vue'
+import { TOOL_ICON_MAP } from '@/constants/toolIcons'
 
 defineProps<{
   tools: ToolEnum[]
@@ -52,23 +44,13 @@ defineEmits<{
   close: []
 }>()
 
-const iconMap: Record<string, any> = {
-  Pointer, Move: Rank, CopyDocument, CircleCheck, Edit, MagicStick,
-  Crop, View, Brush, Delete, Stamp, TrendCharts,
-  EditPen, Minus, Position, FullScreen, Cloudy, Sunny,
-  ScaleToOriginal, Sort, Share, Magnet, Aim, Grid,
-  DataLine, Notebook, BrushFilled, Opportunity, ColdDrink,
-  CircleClose, Close, Connection, CirclePlus, Remove, Switch,
-  Document, Star, SemiSelect, HelpFilled,
-}
-
 function getToolInfo(toolId: ToolEnum) {
   return TOOL_LIST.find(t => t.id === toolId)
 }
 
 function getIconComponent(toolId: ToolEnum) {
   const iconName = getToolInfo(toolId)?.icon
-  return iconName ? iconMap[iconName] : null
+  return iconName ? TOOL_ICON_MAP[iconName] : null
 }
 </script>
 
@@ -79,12 +61,12 @@ function getIconComponent(toolId: ToolEnum) {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 9998;
+  z-index: $z-flyout-overlay;
 }
 
 .tool-flyout {
   position: fixed;
-  z-index: 9999;
+  z-index: $z-flyout;
   background: $bg-darker;
   border: 1px solid $border-light;
   border-radius: 4px;
