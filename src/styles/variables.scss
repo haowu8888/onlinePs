@@ -1,0 +1,49 @@
+// ===== Color Palette =====
+$bg-darkest: #1e1e1e;
+$bg-darker: #252526;
+$bg-dark: #2d2d30;
+$bg-medium: #333337;
+$bg-light: #3e3e42;
+$bg-lighter: #4e4e52;
+
+$border-color: #3e3e42;
+$border-light: #4e4e52;
+
+$text-primary: #d4d4d4;
+$text-secondary: #aaaaaa;
+$text-muted: #8a8a8a;
+$text-bright: #ffffff;
+
+$accent-color: #0078d4;
+$accent-hover: #1a8adf;
+$accent-active: #005a9e;
+
+$success-color: #4caf50;
+$warning-color: #ff9800;
+$danger-color: #f44336;
+
+// ===== Layout Dimensions =====
+$menubar-height: 30px;
+$options-bar-height: 36px;
+$toolbar-width: 42px;
+$panel-width: 260px;
+$statusbar-height: 24px;
+
+// ===== Font =====
+$font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+$font-size-xs: 12px;
+$font-size-sm: 13px;
+$font-size-base: 13px;
+$font-size-lg: 14px;
+
+// ===== Transitions =====
+$transition-fast: 0.15s ease;
+$transition-normal: 0.25s ease;
+
+// ===== Z-Index =====
+$z-menubar: 100;
+$z-toolbar: 90;
+$z-options-bar: 80;
+$z-panels: 70;
+$z-dialog: 200;
+$z-dropdown: 150;

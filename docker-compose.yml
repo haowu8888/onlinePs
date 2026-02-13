@@ -1,0 +1,7 @@
+services:
+  onlineps:
+    build: .
+    container_name: onlineps
+    ports:
+      - "80:80"
+    restart: unless-stopped

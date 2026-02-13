@@ -1,0 +1,84 @@
+@use './variables' as *;
+@use './reset';
+@use './theme';
+
+// Global utility classes
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// Icon button base
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: $text-secondary;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: $bg-light;
+    color: $text-bright;
+  }
+
+  &.active {
+    background: $accent-color;
+    color: $text-bright;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+// Panel section
+.panel-section {
+  padding: 10px;
+  border-bottom: 1px solid $border-color;
+
+  &__title {
+    font-size: $font-size-xs;
+    color: $text-secondary;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+}
+
+// Separator
+.separator {
+  height: 1px;
+  background: $border-color;
+  margin: 4px 0;
+}
+
+// Context menu
+.context-menu {
+  position: fixed;
+  z-index: $z-dropdown;
+  background: $bg-dark;
+  border: 1px solid $border-color;
+  border-radius: 4px;
+  padding: 4px 0;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}

@@ -1,0 +1,96 @@
+@use './variables' as *;
+
+// Element Plus dark theme overrides
+:root {
+  --el-color-primary: #{$accent-color};
+  --el-color-primary-light-3: #{$accent-hover};
+  --el-color-primary-dark-2: #{$accent-active};
+  --el-bg-color: #{$bg-dark};
+  --el-bg-color-overlay: #{$bg-medium};
+  --el-bg-color-page: #{$bg-darkest};
+  --el-text-color-primary: #{$text-primary};
+  --el-text-color-regular: #{$text-secondary};
+  --el-text-color-secondary: #{$text-muted};
+  --el-border-color: #{$border-color};
+  --el-border-color-light: #{$border-light};
+  --el-fill-color: #{$bg-medium};
+  --el-fill-color-light: #{$bg-light};
+  --el-fill-color-blank: #{$bg-dark};
+  --el-menu-bg-color: #{$bg-darker};
+  --el-menu-hover-bg-color: #{$bg-light};
+  --el-menu-text-color: #{$text-primary};
+  --el-menu-active-color: #{$accent-color};
+  --el-font-size-base: #{$font-size-base};
+}
+
+// Element Plus component overrides
+.el-input__wrapper {
+  background-color: $bg-darkest !important;
+  box-shadow: 0 0 0 1px $border-color inset !important;
+}
+
+.el-select__wrapper {
+  background-color: $bg-darkest !important;
+  box-shadow: 0 0 0 1px $border-color inset !important;
+}
+
+.el-slider__runway {
+  background-color: $bg-light;
+}
+
+.el-button--primary {
+  --el-button-bg-color: #{$accent-color};
+  --el-button-border-color: #{$accent-color};
+  --el-button-hover-bg-color: #{$accent-hover};
+  --el-button-hover-border-color: #{$accent-hover};
+}
+
+.el-dialog {
+  --el-dialog-bg-color: #{$bg-dark};
+  --el-dialog-title-font-size: #{$font-size-lg};
+}
+
+.el-dropdown-menu {
+  background-color: $bg-dark !important;
+  border-color: $border-color !important;
+
+  .el-dropdown-menu__item {
+    color: $text-primary !important;
+
+    &:hover {
+      background-color: $accent-color !important;
+      color: $text-bright !important;
+    }
+
+    &.is-disabled {
+      color: $text-muted !important;
+    }
+  }
+}
+
+.el-popper.is-dark {
+  background: $bg-dark;
+  border: 1px solid $border-color;
+  color: $text-bright;
+
+  .el-popper__arrow::before {
+    background: $bg-dark;
+    border-color: $border-color;
+  }
+}
+
+.el-tabs__item {
+  color: $text-muted !important;
+
+  &.is-active {
+    color: $text-bright !important;
+  }
+
+  &:hover:not(.is-active) {
+    color: $text-primary !important;
+  }
+}
+
+.el-tabs__nav-wrap::after {
+  background-color: $border-color !important;
+}

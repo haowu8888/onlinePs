@@ -1,0 +1,18 @@
+export const BLEND_MODES = [
+  { value: 'source-over', label: '正常' },
+  { value: 'multiply', label: '正片叠底' },
+  { value: 'screen', label: '滤色' },
+  { value: 'overlay', label: '叠加' },
+  { value: 'darken', label: '变暗' },
+  { value: 'lighten', label: '变亮' },
+  { value: 'color-dodge', label: '颜色减淡' },
+  { value: 'color-burn', label: '颜色加深' },
+  { value: 'hard-light', label: '强光' },
+  { value: 'soft-light', label: '柔光' },
+  { value: 'difference', label: '差值' },
+  { value: 'exclusion', label: '排除' },
+  { value: 'hue', label: '色相' },
+  { value: 'saturation', label: '饱和度' },
+  { value: 'color', label: '颜色' },
+  { value: 'luminosity', label: '明度' },
+]
